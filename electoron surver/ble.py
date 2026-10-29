@@ -1,4 +1,4 @@
-import asyncio
+ï»¿import asyncio
 import json
 import time
 from contextlib import suppress
@@ -7,23 +7,23 @@ from urllib.parse import urlparse, parse_qs
 from bleak import BleakScanner, BleakClient
 from websockets.asyncio.server import serve, broadcast
 
-# ===== İ’è =====
-PICOS = {1: "PRC-1", 2: "PRC-2", 3: "PRC-3"}   # ”Ô†: ƒAƒhƒoƒ^ƒCƒY–¼
-PRIORITY = [1, 2, 3]            # Ú‘±‚Ì—Dæ‡(æ“ª‚Ù‚Ç—Dæ)
-SENT_UUID = "fd9811b9-aa86-4c22-81a9-5da8306915b1"   # ƒ‚[ƒ^[‘‚«‚İ
-READ_UUID = "a597c0b6-02de-4cce-b896-db087b21f773"   # “dˆ³Notify(mV, uint16)
-SCAN_SEC = 5.0                  # 1‰ñ‚ÌƒXƒLƒƒƒ“ŠÔ
-RESEND_SEC = 0.5                # •Ï‰»‚ª‚È‚­‚Ä‚àA‚±‚ÌŠÔŠu‚ÅPico‚ÉÄ‘—‚·‚é
-TABLET_TIMEOUT = 1.0            # ƒ^ƒuƒŒƒbƒg‚©‚ç‚±‚Ì•b”“Í‚©‚È‚¯‚ê‚Î’â~w—ß‚É‚·‚é
-STOP_CMD = (0, 0, 0)            # ’â~w—ß (speed, radian, giar)B•K—v‚È‚ç’²®
+# ===== è¨­å®š =====
+PICOS = {1: "PRC-1", 2: "PRC-2", 3: "PRC-3"}   # ç•ªå·: ã‚¢ãƒ‰ãƒã‚¿ã‚¤ã‚ºå
+PRIORITY = [1, 2, 3]            # æ¥ç¶šã®å„ªå…ˆé †(å…ˆé ­ã»ã©å„ªå…ˆ)
+SENT_UUID = "fd9811b9-aa86-4c22-81a9-5da8306915b1"   # ãƒ¢ãƒ¼ã‚¿ãƒ¼æ›¸ãè¾¼ã¿
+READ_UUID = "a597c0b6-02de-4cce-b896-db087b21f773"   # é›»åœ§Notify(mV, uint16)
+SCAN_SEC = 5.0                  # 1å›ã®ã‚¹ã‚­ãƒ£ãƒ³æ™‚é–“
+RESEND_SEC = 0.5                # å¤‰åŒ–ãŒãªãã¦ã‚‚ã€ã“ã®é–“éš”ã§Picoã«å†é€ã™ã‚‹
+TABLET_TIMEOUT = 1.0            # ã‚¿ãƒ–ãƒ¬ãƒƒãƒˆã‹ã‚‰ã“ã®ç§’æ•°å±Šã‹ãªã‘ã‚Œã°åœæ­¢æŒ‡ä»¤ã«ã™ã‚‹
+STOP_CMD = (0, 0, 0)            # åœæ­¢æŒ‡ä»¤ (speed, radian, giar)ã€‚å¿…è¦ãªã‚‰èª¿æ•´
 WS_HOST, WS_PORT = "0.0.0.0", 8765
 
-# ===== ó‘Ô =====
-latest = {pid: None for pid in PICOS}      # ƒ^ƒuƒŒƒbƒg‚©‚ç“Í‚¢‚½ÅV‚Ì (speed, radian, giar)
-rx_time = {pid: 0.0 for pid in PICOS}      # ÅŒã‚Éƒ^ƒuƒŒƒbƒg‚©‚çóM‚µ‚½
+# ===== çŠ¶æ…‹ =====
+latest = {pid: None for pid in PICOS}      # ã‚¿ãƒ–ãƒ¬ãƒƒãƒˆã‹ã‚‰å±Šã„ãŸæœ€æ–°ã® (speed, radian, giar)
+rx_time = {pid: 0.0 for pid in PICOS}      # æœ€å¾Œã«ã‚¿ãƒ–ãƒ¬ãƒƒãƒˆã‹ã‚‰å—ä¿¡ã—ãŸæ™‚åˆ»
 state = {pid: {"id": pid, "connected": False, "voltage": None} for pid in PICOS}
-ws_clients = {}                            # ws -> ’S“–‚ÌPico”Ô†
-sessions = {}                              # pid -> ’ÊM’†‚Ìƒ^ƒXƒN(QÆ‚ğ•Û)
+ws_clients = {}                            # ws -> æ‹…å½“ã®Picoç•ªå·
+sessions = {}                              # pid -> é€šä¿¡ä¸­ã®ã‚¿ã‚¹ã‚¯(å‚ç…§ã‚’ä¿æŒ)
 
 
 def clamp(v, lo, hi):
@@ -39,7 +39,7 @@ def pack_sent(speed, radian, giar) -> bytes:
 
 
 def publish(pid, **changes):
-    """ó‘Ô‚ğXV‚µA‚»‚ÌPico‚ğ’S“–‚·‚éƒ^ƒuƒŒƒbƒg‚É‚¾‚¯‘—‚é"""
+    """çŠ¶æ…‹ã‚’æ›´æ–°ã—ã€ãã®Picoã‚’æ‹…å½“ã™ã‚‹ã‚¿ãƒ–ãƒ¬ãƒƒãƒˆã«ã ã‘é€ã‚‹"""
     state[pid].update(changes)
     targets = [w for w, i in ws_clients.items() if i == pid]
     if targets:
@@ -48,14 +48,14 @@ def publish(pid, **changes):
 
 def make_on_voltage(pid):
     def on_voltage(sender, data: bytearray):
-        mv = int.from_bytes(data, "little")        # Pico‚Í mV(•„†‚È‚µ16bit)‚Å‘—‚é
+        mv = int.from_bytes(data, "little")        # Picoã¯ mV(ç¬¦å·ãªã—16bit)ã§é€ã‚‹
         publish(pid, voltage=mv / 1000)
     return on_voltage
 
 
-# ===== ƒ^ƒuƒŒƒbƒg(WebSocket)‘¤ =====
+# ===== ã‚¿ãƒ–ãƒ¬ãƒƒãƒˆ(WebSocket)å´ =====
 async def handler(ws):
-    """Ú‘±URL‚Ì ?id=1..3 ‚Å’S“–‚ÌPico‚ğŒˆ‚ß‚é"""
+    """æ¥ç¶šURLã® ?id=1..3 ã§æ‹…å½“ã®Picoã‚’æ±ºã‚ã‚‹"""
     q = parse_qs(urlparse(ws.request.path).query)
     try:
         my_id = int(q["id"][0])
@@ -68,23 +68,23 @@ async def handler(ws):
     ws_clients[ws] = my_id
     print(f"tablet connected: Pico{my_id}")
     try:
-        await ws.send(json.dumps(state[my_id]))    # Ú‘±’¼Œã‚ÉŒ»İ‚Ìó‘Ô‚ğ‘—‚é
+        await ws.send(json.dumps(state[my_id]))    # æ¥ç¶šç›´å¾Œã«ç¾åœ¨ã®çŠ¶æ…‹ã‚’é€ã‚‹
         async for message in ws:
             try:
                 d = json.loads(message)
-                latest[my_id] = (d["speed"], d["radian"], d["giar"])   # id‚ÍÚ‘±‚Ì”Ô†‚ğg‚¤
+                latest[my_id] = (d["speed"], d["radian"], d["giar"])   # idã¯æ¥ç¶šæ™‚ã®ç•ªå·ã‚’ä½¿ã†
                 rx_time[my_id] = time.monotonic()
             except (ValueError, KeyError, TypeError):
-                print("•s³‚ÈƒƒbƒZ[ƒW:", message)
+                print("ä¸æ­£ãªãƒ¡ãƒƒã‚»ãƒ¼ã‚¸:", message)
     finally:
         ws_clients.pop(ws, None)
-        latest[my_id] = None                       # ƒ^ƒuƒŒƒbƒg‚ªØ‚ê‚½‚çw—ß‚ğÌ‚Ä‚é(¨’â~)
+        latest[my_id] = None                       # ã‚¿ãƒ–ãƒ¬ãƒƒãƒˆãŒåˆ‡ã‚ŒãŸã‚‰æŒ‡ä»¤ã‚’æ¨ã¦ã‚‹(â†’åœæ­¢)
         print(f"tablet disconnected: Pico{my_id}")
 
 
-# ===== Pico(BLE)‘¤ =====
+# ===== Pico(BLE)å´ =====
 async def sender(pid, client):
-    """Pico‚Ö‘‚«‚ŞBƒ^ƒuƒŒƒbƒg‚©‚ç“Í‚¢‚Ä‚¢‚È‚¯‚ê‚Î’â~w—ß‚ğ‘—‚é"""
+    """Picoã¸æ›¸ãè¾¼ã‚€ã€‚ã‚¿ãƒ–ãƒ¬ãƒƒãƒˆã‹ã‚‰å±Šã„ã¦ã„ãªã‘ã‚Œã°åœæ­¢æŒ‡ä»¤ã‚’é€ã‚‹"""
     last, last_t = None, 0.0
     while client.is_connected:
         now = time.monotonic()
@@ -98,7 +98,7 @@ async def sender(pid, client):
 
 
 async def session(pid, client):
-    """1‘ä•ª‚Ì’ÊMBI‚í‚Á‚½‚çØ’fó‘Ô‚É‚µ‚ÄŒãn––‚·‚é"""
+    """1å°åˆ†ã®é€šä¿¡ã€‚çµ‚ã‚ã£ãŸã‚‰åˆ‡æ–­çŠ¶æ…‹ã«ã—ã¦å¾Œå§‹æœ«ã™ã‚‹"""
     try:
         await sender(pid, client)
     except Exception as e:
@@ -112,7 +112,7 @@ async def session(pid, client):
 
 
 async def scan():
-    """1‰ñ‚ÌƒXƒLƒƒƒ“‚ÅAŒ©‚¦‚Ä‚¢‚éPico‚ğ {–¼‘O: ƒfƒoƒCƒX} ‚Å•Ô‚·"""
+    """1å›ã®ã‚¹ã‚­ãƒ£ãƒ³ã§ã€è¦‹ãˆã¦ã„ã‚‹Picoã‚’ {åå‰: ãƒ‡ãƒã‚¤ã‚¹} ã§è¿”ã™"""
     names = set(PICOS.values())
     found = {}
     results = await BleakScanner.discover(timeout=SCAN_SEC, return_adv=True)
@@ -128,7 +128,7 @@ async def connect_one(pid, dev):
         await client.connect()
         await client.start_notify(READ_UUID, make_on_voltage(pid))
     except Exception as e:
-        print(f"[Pico{pid}] Ú‘±¸”s: {type(e).__name__}: {e}")
+        print(f"[Pico{pid}] æ¥ç¶šå¤±æ•—: {type(e).__name__}: {e}")
         with suppress(Exception):
             await client.disconnect()
         return False
@@ -139,23 +139,23 @@ async def connect_one(pid, dev):
 
 
 async def connector():
-    """–¢Ú‘±‚ÌPico‚ğAPRIORITY‚Ì‡‚É1‘ä‚¸‚ÂÚ‘±‚µ‘±‚¯‚é"""
+    """æœªæ¥ç¶šã®Picoã‚’ã€PRIORITYã®é †ã«1å°ãšã¤æ¥ç¶šã—ç¶šã‘ã‚‹"""
     while True:
         missing = [pid for pid in PRIORITY if not state[pid]["connected"]]
         if not missing:
             await asyncio.sleep(1.0)
             continue
 
-        found = await scan()                       # ƒXƒLƒƒƒ“‚Í1‰ñ‚Å‘S‘ä•ª
-        for pid in PRIORITY:                       # © ‚±‚±‚ª—Dæ‡ˆÊ
+        found = await scan()                       # ã‚¹ã‚­ãƒ£ãƒ³ã¯1å›ã§å…¨å°åˆ†
+        for pid in PRIORITY:                       # â† ã“ã“ãŒå„ªå…ˆé †ä½
             if pid in missing and PICOS[pid] in found:
-                await connect_one(pid, found[PICOS[pid]])   # Œ©‚¦‚È‚¢q‚Í”ò‚Î‚·
+                await connect_one(pid, found[PICOS[pid]])   # è¦‹ãˆãªã„å­ã¯é£›ã°ã™
         await asyncio.sleep(1.0)
 
 
 async def main():
     async with serve(handler, WS_HOST, WS_PORT):
-        print(f"WebSocket‘Ò‚¿ó‚¯: ws://<Pi‚ÌIP>:{WS_PORT}/?id=1..3")
+        print(f"WebSocketå¾…ã¡å—ã‘: ws://<Piã®IP>:{WS_PORT}/?id=1..3")
         await connector()
 
 asyncio.run(main())

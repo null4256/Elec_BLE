@@ -1,10 +1,10 @@
-'use strict';
+ï»¿'use strict';
 
-//ƒXƒNƒ[ƒ‹–h~
+//ã‚¹ã‚¯ãƒ­ãƒ¼ãƒ«é˜²æ­¢
 document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
 
-//Speedˆ—’è‹`
+//Speedå‡¦ç†å®šç¾©
 const speed_square = document.querySelector('.speed_square');
 const speed_stick = document.querySelector('.speed_stick');
 const speed = document.querySelector('.speed');
@@ -12,11 +12,11 @@ const speed_mater = document.querySelector('.speed_mater');
 var moter_speed = 0;
 let speed_flag = false;
 
-//ŠÔˆ—’è‹`
+//æ™‚é–“å‡¦ç†å®šç¾©
 var time = document.querySelector('.time');
 var now_time = new Date();
 
-//ƒMƒAˆ—’è‹`
+//ã‚®ã‚¢å‡¦ç†å®šç¾©
 const giar = document.querySelectorAll('.giars, .giar_line');
 const giar_stick = document.querySelector('.giar_stick');
 var giar_flag = false;
@@ -27,28 +27,28 @@ const gt3 = document.querySelector('.gt3');
 const gt4 = document.querySelector('.gt4');
 const gt5 = document.querySelector('.gt5');
 const giar_selectors = [gtR,gt1,gt2,gt3,gt4,gt5];
-var moter_giar = 6;		//6‚ÍNó‘ÔA0‚ÍRó‘ÔA‘¼‚Í”š’Ê‚è(‹N“®‚ÍN)
+var moter_giar = 6;		//6ã¯NçŠ¶æ…‹ã€0ã¯RçŠ¶æ…‹ã€ä»–ã¯æ•°å­—é€šã‚Š(èµ·å‹•æ™‚ã¯N)
 
 
-//Šp“xˆ—’è‹`
+//è§’åº¦å‡¦ç†å®šç¾©
 const radius = document.querySelector('.radius');
 const radius_boundary = document.querySelector('.radius_boundary');
 const stickgroove_radius = document.querySelector('.stickgroove_radius');
 var radius_flag = false;
 var moter_degree = 0;
 
-//wifiˆ—’è‹`
+//wifiå‡¦ç†å®šç¾©
 var wifi = document.querySelector('.wifi');
 
-//bluetoothEƒoƒbƒeƒŠ[Eƒiƒ“ƒo[ˆ—’è‹`
+//bluetoothãƒ»ãƒãƒƒãƒ†ãƒªãƒ¼ãƒ»ãƒŠãƒ³ãƒãƒ¼å‡¦ç†å®šç¾©
 var bluetooth = document.querySelector('.bluetooth');
 var battery = document.querySelector('.battery');
 var number = document.querySelector('.number');
 
-//’ÊMˆ—’è‹`
-const MY_ID = Number(new URLSearchParams(location.search).get('id'));		//URL‚Ì ?id=1~3 ‚ªPico”Ô†
+//é€šä¿¡å‡¦ç†å®šç¾©
+const MY_ID = Number(new URLSearchParams(location.search).get('id'));		//URLã® ?id=1~3 ãŒPicoç•ªå·
 const WS_URL = 'ws://' + location.hostname + ':8765/?id=' + MY_ID;
-const SEND_INTERVAL_MS = 100;		//‘—MŠÔŠu(Python‘¤‚Í1•b“Í‚©‚È‚¢‚Æ’â~w—ß‚É‚·‚é)
+const SEND_INTERVAL_MS = 100;		//é€ä¿¡é–“éš”(Pythonå´ã¯1ç§’å±Šã‹ãªã„ã¨åœæ­¢æŒ‡ä»¤ã«ã™ã‚‹)
 var ws = null;
 
 Wifi_Config();
@@ -61,7 +61,7 @@ Wifi_Config();
 
 
 
-//Speedˆ—
+//Speedå‡¦ç†
 
 
 
@@ -69,7 +69,7 @@ Wifi_Config();
 
 
 
-//speed‚ÌƒAƒbƒvƒf[ƒg
+//speedã®ã‚¢ãƒƒãƒ—ãƒ‡ãƒ¼ãƒˆ
 const Up_Down_Speed=(event) =>{
 	const y = event.offsetY
 	speed_stick.style.top = y+'px';
@@ -78,7 +78,7 @@ const Up_Down_Speed=(event) =>{
 	moter_speed = Math.round( (400-y)/4) ;
 }
 
-//Speed‚Ìˆ—
+//Speedã®å‡¦ç†
 speed_square.addEventListener('pointerdown',(event) => {
 	speed_flag = true;
 	Up_Down_Speed(event);
@@ -91,15 +91,15 @@ window.addEventListener('pointerup', () => { speed_flag=false; } )
 
 
 
-//Šp“xˆ—
+//è§’åº¦å‡¦ç†
 
 
-//Šp“xƒAƒbƒvƒf[ƒg
+//è§’åº¦ã‚¢ãƒƒãƒ—ãƒ‡ãƒ¼ãƒˆ
 const Update_Radius=(event) =>{
 	var x = - Math.round( (300-event.offsetX) / 10 );
 	var y = Math.round( (300-event.offsetY) / 10 );
 	var r = Math.sqrt(Math.abs(x)**2+Math.abs(y)**2);
-	if(r === 0){ return; }		//’†S‚¿‚å‚¤‚Ç‚¾‚Æ0‚ÅŠ„‚Á‚ÄNaN‚É‚È‚é‚½‚ß
+	if(r === 0){ return; }		//ä¸­å¿ƒã¡ã‚‡ã†ã©ã ã¨0ã§å‰²ã£ã¦NaNã«ãªã‚‹ãŸã‚
 	var sin = y/r;
 	var cos = x/r;
 	
@@ -108,7 +108,7 @@ const Update_Radius=(event) =>{
 	moter_degree = Math.round( Math.asin(cos)*180/Math.PI );
 }
 
-//Šp“x‚Ìˆ—
+//è§’åº¦ã®å‡¦ç†
 radius_boundary.addEventListener('pointerdown',(event) => {
 	radius_flag = true;
 	 Update_Radius(event);
@@ -125,7 +125,7 @@ window.addEventListener('pointerup', () => { radius_flag = false; } )
 
 
 
-//ƒMƒAˆ—
+//ã‚®ã‚¢å‡¦ç†
 
 const Giar_UpDate=(event) =>{
 	const x = event.clientX
@@ -138,14 +138,14 @@ const Giar_UpDate=(event) =>{
 const Giar_Select=(event) =>{
 	const R = 45;
 	const s = giar_stick.getBoundingClientRect();
-	const sx = s.left + R , sy = s.top + R;   // ‰~‚Ì’†S
+	const sx = s.left + R , sy = s.top + R;   // å††ã®ä¸­å¿ƒ
 
 	var best = 0,mindiff = Infinity;
 	var x = 0,y = 0,r = 0,rect = 0;
 	var top = 0,bottom = 0;
 
 
-	//6‚ÍNí‘Ô‚Å0‚ÍRó‘ÔA‘¼‚Í”š’Ê‚è	
+	//6ã¯Nå¸¸æ…‹ã§0ã¯RçŠ¶æ…‹ã€ä»–ã¯æ•°å­—é€šã‚Š	
 	for(var i=0;i<7;i++){	
 
 		if(i == 6){
@@ -202,7 +202,7 @@ window.addEventListener('pointerup', (event) => {
 
 
 
-//ŠÔ
+//æ™‚é–“
 
 function Zero_Plus(num){
 	var i = 0;
@@ -224,8 +224,8 @@ setInterval(Update_Time, 1000);
 
 
 
-//wifiˆ—
-//Pi(WebSocket)‚É‚Â‚È‚ª‚Á‚Ä‚¢‚é‚©‚Å•\¦‚·‚é
+//wifiå‡¦ç†
+//Pi(WebSocket)ã«ã¤ãªãŒã£ã¦ã„ã‚‹ã‹ã§è¡¨ç¤ºã™ã‚‹
 function Wifi_Config(){
 	if (ws !== null && ws.readyState === WebSocket.OPEN){ wifi.innerHTML = "Wifi<br>Connection Success!!";} 
 	else { wifi.innerHTML = "Wifi<br>No Connection";}
@@ -235,18 +235,18 @@ function Wifi_Config(){
 
 
 
-//ƒiƒ“ƒo[ˆ—
-//URL‚Ì ?id= ‚Ì”Ô†‚ğ•\¦‚·‚é
+//ãƒŠãƒ³ãƒãƒ¼å‡¦ç†
+//URLã® ?id= ã®ç•ªå·ã‚’è¡¨ç¤ºã™ã‚‹
 function Update_Number(){
 	if(MY_ID >= 1 && MY_ID <= 3){ number.textContent = "Number:" + MY_ID; }
-	else{ number.textContent = "Number:None (URL‚É ?id=1~3 ‚ğ•t‚¯‚Ä)"; }
+	else{ number.textContent = "Number:None (URLã« ?id=1~3 ã‚’ä»˜ã‘ã¦)"; }
 }
 
 
 
 
-//bluetoothˆ—
-//Pico‚Ìó‘Ô({id, connected, voltage})‚ğ‰æ–Ê‚É”½‰f‚·‚é
+//bluetoothå‡¦ç†
+//Picoã®çŠ¶æ…‹({id, connected, voltage})ã‚’ç”»é¢ã«åæ˜ ã™ã‚‹
 function Update_Pico(state){
 	if(state.connected === true){ bluetooth.innerHTML = "Bluetooth<br>Connected"; }
 	else{ bluetooth.innerHTML = "Bluetooth<br>No Connection"; }
@@ -263,11 +263,11 @@ function Update_Pico(state){
 
 
 
-//bluetooth‘—‚é
-//speed:0~10, radian:-90~90, giar:0~6 ‚ÉŠÛ‚ß‚Ä‘—‚é(Python‘¤‚Ì”ÍˆÍ‚É‡‚í‚¹‚é)
+//bluetoothé€ã‚‹
+//speed:0~10, radian:-90~90, giar:0~6 ã«ä¸¸ã‚ã¦é€ã‚‹(Pythonå´ã®ç¯„å›²ã«åˆã‚ã›ã‚‹)
 function Clamp_Int(value, lo, hi){
 	var v = Math.round(Number(value));
-	if(!Number.isFinite(v)){ v = 0; }		//NaN‚ğ‘—‚é‚ÆPython‚ª—‚¿‚é‚½‚ß
+	if(!Number.isFinite(v)){ v = 0; }		//NaNã‚’é€ã‚‹ã¨PythonãŒè½ã¡ã‚‹ãŸã‚
 	return Math.max(lo, Math.min(hi, v));
 }
 
@@ -275,27 +275,27 @@ function Ble_Sent(){
 	if(ws === null || ws.readyState !== WebSocket.OPEN){ return; }
 
 	ws.send(JSON.stringify({
-		speed : Clamp_Int(moter_speed / 10, 0, 10),		//0~100%‚ğ0~10‚É•ÏŠ·
+		speed : Clamp_Int(moter_speed / 10, 0, 10),		//0~100%ã‚’0~10ã«å¤‰æ›
 		radian: Clamp_Int(moter_degree, -90, 90),
 		giar  : Clamp_Int(moter_giar, 0, 6)
 	}));
 }
 
-//’l‚ª•Ï‚í‚ç‚È‚­‚Ä‚àˆê’èŠÔŠu‚Å‘—‚è‘±‚¯‚é(~‚Ü‚é‚ÆPython‘¤‚ª’â~w—ß‚É‚·‚é)
+//å€¤ãŒå¤‰ã‚ã‚‰ãªãã¦ã‚‚ä¸€å®šé–“éš”ã§é€ã‚Šç¶šã‘ã‚‹(æ­¢ã¾ã‚‹ã¨Pythonå´ãŒåœæ­¢æŒ‡ä»¤ã«ã™ã‚‹)
 setInterval(Ble_Sent, SEND_INTERVAL_MS);
 
 
-//bluetoothó‚¯æ‚é
+//bluetoothå—ã‘å–ã‚‹
 function Ble_Catch(event){
 	try{
 		Update_Pico( JSON.parse(event.data) );
 	}catch(e){
-		console.log("óMƒGƒ‰[:", e);
+		console.log("å—ä¿¡ã‚¨ãƒ©ãƒ¼:", e);
 	}
 }
 
 
-//WebSocketÚ‘±(Ø‚ê‚½‚ç2•bŒã‚É©“®‚ÅÄÚ‘±)
+//WebSocketæ¥ç¶š(åˆ‡ã‚ŒãŸã‚‰2ç§’å¾Œã«è‡ªå‹•ã§å†æ¥ç¶š)
 function Connect_WS(){
 	ws = new WebSocket(WS_URL);
 
@@ -309,7 +309,7 @@ function Connect_WS(){
 }
 
 
-//‹N“®
+//èµ·å‹•
 Update_Number();
 Update_Pico({ connected:false, voltage:null });
 if(MY_ID >= 1 && MY_ID <= 3){ Connect_WS(); }

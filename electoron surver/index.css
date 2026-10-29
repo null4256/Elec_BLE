@@ -1,10 +1,10 @@
-
+ï»¿
 :root{
 	font-family: 'Orbitron','DotGothic16';
 }
 
 
-/*”wŒi‚ğÂ•‚­‚·‚é*/
+/*èƒŒæ™¯ã‚’é’é»’ãã™ã‚‹*/
 body{
 	background: rgba(10,15,70,1);
 	user-select: none;	
@@ -14,7 +14,7 @@ body{
 
 
 
-/*‘S‘Ì‚ğƒRƒ“ƒeƒi‚Å’†‰›‚¼‚ë‚¦‚É*/
+/*å…¨ä½“ã‚’ã‚³ãƒ³ãƒ†ãƒŠã§ä¸­å¤®ãã‚ãˆã«*/
 .body{
 	display: flex;
 	justify-content:center;
@@ -22,7 +22,7 @@ body{
 
 
 
-/*ƒMƒA‚Ì•\¦*/
+/*ã‚®ã‚¢ã®è¡¨ç¤º*/
 .giars{
 	width: 50px;
 	height: 300px; 
@@ -63,7 +63,7 @@ body{
 
 
 
-/*ƒMƒA‚Ì•¶š*/
+/*ã‚®ã‚¢ã®æ–‡å­—*/
 [class^="gt"]{
 	font-size: 200%;
 	color: rgba(255,255,255,1);
@@ -82,7 +82,7 @@ body{
 
 
 
-/*Šp“x‘€ì*/
+/*è§’åº¦æ“ä½œ*/
 .radius_boundary{
   width: 600px;
   height:300px;
@@ -118,7 +118,7 @@ body{
 }
 
 
-/*‘¬“x‘€ì*/
+/*é€Ÿåº¦æ“ä½œ*/
 .speed_square{
 	width: 300px;
 	height:400px;
@@ -162,7 +162,7 @@ body{
 	left:10%;
 }
 
-/*¬•¨W*/
+/*å°ç‰©é›†*/
 .time,
 .wifi,
 .battery,
@@ -180,7 +180,7 @@ body{
 
 
 
-/*ƒpƒlƒ‹*/
+/*ãƒ‘ãƒãƒ«*/
 p.number, .Pi_panel, .tenzi_plate{
 	position:fixed;
 	color: #FFD700;
@@ -193,7 +193,7 @@ p.number{top: 18%;}
 
 
 
-/*•¶š*/
+/*æ–‡å­—*/
 .electricity{
   top: 12%;
   right: 47%;
@@ -206,7 +206,7 @@ p.number{top: 18%;}
 
 
 
-/*ã‚Æ‰º‚Ì“øFƒ‰ƒCƒ“*/
+/*ä¸Šã¨ä¸‹ã®è™¹è‰²ãƒ©ã‚¤ãƒ³*/
 .line_folded, .line_folded_down{
 	background: linear-gradient(to right,#e60000C0,#f39800C0,#fff100C0,#009944C0,#0068bC07,#1d2088C0,#920783C0,#e60000C0) 0 / 200%;
 	animation: 5s rainbow_ber linear infinite;
@@ -241,7 +241,7 @@ html, body,
 	touch-action: none;
 }
 
-/*ó‘Ô•Ï‰»W*/
+/*çŠ¶æ…‹å¤‰åŒ–é›†*/
 
 .battery{
 
