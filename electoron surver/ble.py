@@ -5,14 +5,17 @@ from contextlib import suppress
 from urllib.parse import urlparse, parse_qs
 
 from bleak import BleakScanner, BleakClient
+from bleak.exc import BleakError
 from websockets.asyncio.server import serve, broadcast
 
 # ===== 設定 =====
 PICOS = {1: "PRC-1", 2: "PRC-2", 3: "PRC-3"}   # 番号: アドバタイズ名
 PRIORITY = [1, 2, 3]            # 接続の優先順(先頭ほど優先)
 SENT_UUID = "fd9811b9-aa86-4c22-81a9-5da8306915b1"   # モーター書き込み
-READ_UUID = "a597c0b6-02de-4cce-b896-db087b21f773"   # 電圧Notify(mV, uint16)
+READ_UUID = "a597c0b6-02de-4cce-b896-db087b21f773"   # 電圧Notify(mV, uint16 リトルエンディアン)
 SCAN_SEC = 5.0                  # 1回のスキャン時間
+SCAN_IDLE_SEC = 30.0            # 1台でも接続中なら、未接続Picoを探すスキャンはこの間隔にする
+WRITE_FAIL_MAX = 3              # 書き込みがこの回数続けて失敗したら切断する
 RESEND_SEC = 0.5                # 変化がなくても、この間隔でPicoに再送する
 TABLET_TIMEOUT = 1.0            # タブレットからこの秒数届かなければ停止指令にする
 STOP_CMD = (0, 0, 6)            # 停止指令 (speed, radian, giar)。giar=6はN(ニュートラル)
@@ -59,7 +62,7 @@ def make_on_voltage(pid):
 def assign_id(token, wanted):
     """タブレットに割り当てるPico番号を決める"""
     taken = set(ws_clients.values())            # 今つながっているタブレットが使っている番号
-    if wanted in PICOS:                         # ?id= の手動指定を優先
+    if wanted in PICOS:                         # ?id= の手動指定を優先(付けなくてもよい)
         return wanted
     prev = last_id.get(token)
     if prev in PICOS and prev not in taken:     # 前回と同じ番号が空いていれば戻す
@@ -117,16 +120,24 @@ async def handler(ws):
 
 # ===== Pico(BLE)側 =====
 async def sender(pid, client):
-    """Picoへ書き込む。タブレットから届いていなければ停止指令を送る"""
+    """Picoへ書き込む。1回の失敗では切らず、続けて失敗したときだけ切る"""
     last, last_t = None, 0.0
+    fails = 0
     while client.is_connected:
         now = time.monotonic()
         cmd = latest[pid]
         if cmd is None or now - rx_time[pid] > TABLET_TIMEOUT:
             cmd = STOP_CMD
         if cmd != last or now - last_t > RESEND_SEC:
-            await client.write_gatt_char(SENT_UUID, pack_sent(*cmd), response=True)
-            last, last_t = cmd, now
+            try:
+                await client.write_gatt_char(SENT_UUID, pack_sent(*cmd), response=True)
+                last, last_t = cmd, now
+                fails = 0
+            except (BleakError, asyncio.TimeoutError) as e:
+                fails += 1
+                print(f"[Pico{pid}] 書き込み失敗 {fails}/{WRITE_FAIL_MAX}: {type(e).__name__}: {e}")
+                if fails >= WRITE_FAIL_MAX:
+                    raise
         await asyncio.sleep(0.05)
 
 
@@ -173,13 +184,20 @@ async def connect_one(pid, dev):
 
 
 async def connector():
-    """未接続のPicoを、PRIORITYの順に1台ずつ接続し続ける"""
+    """未接続のPicoを、PRIORITYの順に接続する。接続中はスキャンを間引く"""
+    last_scan = 0.0
     while True:
         missing = [pid for pid in PRIORITY if not state[pid]["connected"]]
         if not missing:
             await asyncio.sleep(1.0)
             continue
 
+        any_connected = len(missing) < len(PRIORITY)
+        if any_connected and time.monotonic() - last_scan < SCAN_IDLE_SEC:
+            await asyncio.sleep(1.0)               # 通信中の邪魔をしない
+            continue
+
+        last_scan = time.monotonic()
         found = await scan()                       # スキャンは1回で全台分
         for pid in PRIORITY:                       # ← ここが優先順位
             if pid in missing and PICOS[pid] in found:
