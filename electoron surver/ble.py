@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import json
 import time
 from contextlib import suppress
@@ -15,7 +15,7 @@ READ_UUID = "a597c0b6-02de-4cce-b896-db087b21f773"   # 電圧Notify(mV, uint16)
 SCAN_SEC = 5.0                  # 1回のスキャン時間
 RESEND_SEC = 0.5                # 変化がなくても、この間隔でPicoに再送する
 TABLET_TIMEOUT = 1.0            # タブレットからこの秒数届かなければ停止指令にする
-STOP_CMD = (0, 0, 0)            # 停止指令 (speed, radian, giar)。必要なら調整
+STOP_CMD = (0, 0, 6)            # 停止指令 (speed, radian, giar)。giar=6はN(ニュートラル)
 WS_HOST, WS_PORT = "0.0.0.0", 8765
 
 # ===== 状態 =====
@@ -23,6 +23,8 @@ latest = {pid: None for pid in PICOS}      # タブレットから届いた最�
 rx_time = {pid: 0.0 for pid in PICOS}      # 最後にタブレットから受信した時刻
 state = {pid: {"id": pid, "connected": False, "voltage": None} for pid in PICOS}
 ws_clients = {}                            # ws -> 担当のPico番号
+token_of = {}                              # ws -> そのタブレットのtoken
+last_id = {}                               # token -> 前回割り当てた番号(再接続で同じ番号に戻す)
 sessions = {}                              # pid -> 通信中のタスク(参照を保持)
 
 
@@ -54,31 +56,62 @@ def make_on_voltage(pid):
 
 
 # ===== タブレット(WebSocket)側 =====
+def assign_id(token, wanted):
+    """タブレットに割り当てるPico番号を決める"""
+    taken = set(ws_clients.values())            # 今つながっているタブレットが使っている番号
+    if wanted in PICOS:                         # ?id= の手動指定を優先
+        return wanted
+    prev = last_id.get(token)
+    if prev in PICOS and prev not in taken:     # 前回と同じ番号が空いていれば戻す
+        return prev
+    for pid in PRIORITY:                        # 空いている最小番号(1→2→3)
+        if pid not in taken:
+            return pid
+    return None                                 # 満席
+
+
 async def handler(ws):
-    """接続URLの ?id=1..3 で担当のPicoを決める"""
     q = parse_qs(urlparse(ws.request.path).query)
+    token = q.get("token", [""])[0][:64]
     try:
-        my_id = int(q["id"][0])
-        if my_id not in PICOS:
-            raise ValueError
+        wanted = int(q["id"][0])
     except (KeyError, ValueError, IndexError):
-        await ws.close(code=1008, reason="id=1..3 required")
+        wanted = None
+
+    # 同じタブレットの古い接続が残っていたら閉じる(リロード直後など)
+    if token:
+        for w in [w for w, t in token_of.items() if t == token]:
+            ws_clients.pop(w, None)
+            token_of.pop(w, None)
+            await w.close()
+
+    my_id = assign_id(token, wanted)
+    if my_id is None:
+        print("満席: 3台とも割り当て済み")
+        await ws.close(code=1013, reason="all picos taken")
         return
 
     ws_clients[ws] = my_id
+    token_of[ws] = token
+    if token:
+        last_id[token] = my_id
     print(f"tablet connected: Pico{my_id}")
+
     try:
-        await ws.send(json.dumps(state[my_id]))    # 接続直後に現在の状態を送る
+        await ws.send(json.dumps({"assign": my_id}))    # 割り当てた番号を教える
+        await ws.send(json.dumps(state[my_id]))         # 現在の状態を送る
         async for message in ws:
             try:
                 d = json.loads(message)
-                latest[my_id] = (d["speed"], d["radian"], d["giar"])   # idは接続時の番号を使う
+                latest[my_id] = (int(d["speed"]), int(d["radian"]), int(d["giar"]))
                 rx_time[my_id] = time.monotonic()
             except (ValueError, KeyError, TypeError):
                 print("不正なメッセージ:", message)
     finally:
         ws_clients.pop(ws, None)
-        latest[my_id] = None                       # タブレットが切れたら指令を捨てる(→停止)
+        token_of.pop(ws, None)
+        if my_id not in ws_clients.values():            # 同じ番号の別タブレットがいなければ停止
+            latest[my_id] = None
         print(f"tablet disconnected: Pico{my_id}")
 
 
@@ -116,6 +149,7 @@ async def scan():
     names = set(PICOS.values())
     found = {}
     results = await BleakScanner.discover(timeout=SCAN_SEC, return_adv=True)
+    print("scan:", [adv.local_name for _a, (_d, adv) in results.items() if adv.local_name])
     for _addr, (dev, adv) in results.items():
         if adv.local_name in names:
             found[adv.local_name] = dev
@@ -155,7 +189,7 @@ async def connector():
 
 async def main():
     async with serve(handler, WS_HOST, WS_PORT):
-        print(f"WebSocket待ち受け: ws://<PiのIP>:{WS_PORT}/?id=1..3")
+        print(f"WebSocket待ち受け: ws://<PiのIP>:{WS_PORT}/  (?id=は省略可)")
         await connector()
 
 asyncio.run(main())

@@ -46,8 +46,9 @@ var battery = document.querySelector('.battery');
 var number = document.querySelector('.number');
 
 //通信処理定義
-var my_id = null;		//サーバから割り当てられたPico番号(割り当て前はnull)
-const WANTED_ID = new URLSearchParams(location.search).get('id');		//?id= があれば手動指定
+var my_id = null;					//サーバから自動で割り当てられたPico番号(割り当て前はnull)
+var number_text = "接続中...";		//番号が決まるまでの状態表示
+const WANTED_ID = new URLSearchParams(location.search).get('id');		//?id= は任意(付けなくても自動で決まる)
 const SEND_INTERVAL_MS = 100;		//送信間隔(Python側は1秒届かないと停止指令にする)
 var ws = null;
 
@@ -257,10 +258,10 @@ function Wifi_Config(){
 
 
 //ナンバー処理
-//サーバから割り当てられた番号を表示する
+//サーバが自動で割り当てた番号を表示する(決まるまでは状態を表示)
 function Update_Number(){
 	if(my_id !== null){ number.textContent = "Number:" + my_id; }
-	else{ number.textContent = "Number:None"; }
+	else{ number.textContent = "Number:" + number_text; }
 }
 
 
@@ -312,7 +313,7 @@ function Ble_Catch(event){
 	try{
 		var msg = JSON.parse(event.data);
 
-		if('assign' in msg){			//サーバから番号が割り当てられた
+		if('assign' in msg){			//サーバが番号を自動で割り当てた
 			my_id = msg.assign;
 			Update_Number();
 			return;
@@ -327,11 +328,19 @@ function Ble_Catch(event){
 
 //WebSocket接続(切れたら2秒後に自動で再接続)
 function Connect_WS(){
+	number_text = "接続中...";
+	Update_Number();
+
 	ws = new WebSocket( Make_WS_URL() );
 
 	ws.onopen = () => { Wifi_Config(); };
 	ws.onmessage = Ble_Catch;
-	ws.onclose = () => {
+	ws.onclose = (e) => {
+		my_id = null;
+		if(e.code === 1008){ number_text = "ble.py古い"; }			//?id=必須の古い版が断った
+		else if(e.code === 1013){ number_text = "満席"; }			//3台とも割り当て済み
+		else{ number_text = "サーバ未接続"; }
+		Update_Number();
 		Wifi_Config();
 		Update_Pico({ connected:false, voltage:null });
 		setTimeout(Connect_WS, 2000);
