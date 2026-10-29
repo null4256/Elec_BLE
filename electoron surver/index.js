@@ -46,10 +46,31 @@ var battery = document.querySelector('.battery');
 var number = document.querySelector('.number');
 
 //通信処理定義
-const MY_ID = Number(new URLSearchParams(location.search).get('id'));		//URLの ?id=1~3 がPico番号
-const WS_URL = 'ws://' + location.hostname + ':8765/?id=' + MY_ID;
+var my_id = null;		//サーバから割り当てられたPico番号(割り当て前はnull)
+const WANTED_ID = new URLSearchParams(location.search).get('id');		//?id= があれば手動指定
 const SEND_INTERVAL_MS = 100;		//送信間隔(Python側は1秒届かないと停止指令にする)
 var ws = null;
+
+//このタブレット固有のtoken(再接続しても同じ番号に戻すため)
+function Get_Token(){
+	try{
+		var t = localStorage.getItem('pico_token');
+		if(!t){
+			t = Math.random().toString(36).slice(2) + Date.now().toString(36);
+			localStorage.setItem('pico_token', t);
+		}
+		return t;
+	}catch(e){
+		return Math.random().toString(36).slice(2);		//localStorageが使えない環境
+	}
+}
+const TOKEN = Get_Token();
+
+function Make_WS_URL(){
+	var url = 'ws://' + location.hostname + ':8765/?token=' + encodeURIComponent(TOKEN);
+	if(WANTED_ID !== null){ url += '&id=' + encodeURIComponent(WANTED_ID); }
+	return url;
+}
 
 Wifi_Config();
 
@@ -236,10 +257,10 @@ function Wifi_Config(){
 
 
 //ナンバー処理
-//URLの ?id= の番号を表示する
+//サーバから割り当てられた番号を表示する
 function Update_Number(){
-	if(MY_ID >= 1 && MY_ID <= 3){ number.textContent = "Number:" + MY_ID; }
-	else{ number.textContent = "Number:None (URLに ?id=1~3 を付けて)"; }
+	if(my_id !== null){ number.textContent = "Number:" + my_id; }
+	else{ number.textContent = "Number:None"; }
 }
 
 
@@ -273,6 +294,7 @@ function Clamp_Int(value, lo, hi){
 
 function Ble_Sent(){
 	if(ws === null || ws.readyState !== WebSocket.OPEN){ return; }
+	if(my_id === null){ return; }		//番号が割り当てられるまでは送らない
 
 	ws.send(JSON.stringify({
 		speed : Clamp_Int(moter_speed / 10, 0, 10),		//0~100%を0~10に変換
@@ -288,7 +310,15 @@ setInterval(Ble_Sent, SEND_INTERVAL_MS);
 //bluetooth受け取る
 function Ble_Catch(event){
 	try{
-		Update_Pico( JSON.parse(event.data) );
+		var msg = JSON.parse(event.data);
+
+		if('assign' in msg){			//サーバから番号が割り当てられた
+			my_id = msg.assign;
+			Update_Number();
+			return;
+		}
+
+		Update_Pico(msg);				//{id, connected, voltage}
 	}catch(e){
 		console.log("受信エラー:", e);
 	}
@@ -297,7 +327,7 @@ function Ble_Catch(event){
 
 //WebSocket接続(切れたら2秒後に自動で再接続)
 function Connect_WS(){
-	ws = new WebSocket(WS_URL);
+	ws = new WebSocket( Make_WS_URL() );
 
 	ws.onopen = () => { Wifi_Config(); };
 	ws.onmessage = Ble_Catch;
@@ -312,4 +342,4 @@ function Connect_WS(){
 //起動
 Update_Number();
 Update_Pico({ connected:false, voltage:null });
-if(MY_ID >= 1 && MY_ID <= 3){ Connect_WS(); }
+Connect_WS();
