@@ -27,7 +27,7 @@ const gt3 = document.querySelector('.gt3');
 const gt4 = document.querySelector('.gt4');
 const gt5 = document.querySelector('.gt5');
 const giar_selectors = [gtR,gt1,gt2,gt3,gt4,gt5];
-var moter_giar = 0;
+var moter_giar = 6;		//6はN状態、0はR状態、他は数字通り(起動時はN)
 
 
 //角度処理定義
@@ -39,6 +39,18 @@ var moter_degree = 0;
 
 //wifi処理定義
 var wifi = document.querySelector('.wifi');
+
+//bluetooth・バッテリー・ナンバー処理定義
+var bluetooth = document.querySelector('.bluetooth');
+var battery = document.querySelector('.battery');
+var number = document.querySelector('.number');
+
+//通信処理定義
+const MY_ID = Number(new URLSearchParams(location.search).get('id'));		//URLの ?id=1~3 がPico番号
+const WS_URL = 'ws://' + location.hostname + ':8765/?id=' + MY_ID;
+const SEND_INTERVAL_MS = 100;		//送信間隔(Python側は1秒届かないと停止指令にする)
+var ws = null;
+
 Wifi_Config();
 
 
@@ -87,6 +99,7 @@ const Update_Radius=(event) =>{
 	var x = - Math.round( (300-event.offsetX) / 10 );
 	var y = Math.round( (300-event.offsetY) / 10 );
 	var r = Math.sqrt(Math.abs(x)**2+Math.abs(y)**2);
+	if(r === 0){ return; }		//中心ちょうどだと0で割ってNaNになるため
 	var sin = y/r;
 	var cos = x/r;
 	
@@ -212,8 +225,9 @@ setInterval(Update_Time, 1000);
 
 
 //wifi処理
+//Pi(WebSocket)につながっているかで表示する
 function Wifi_Config(){
-	if (navigator.onLine){ wifi.innerHTML = "Wifi<br>Connection Success!!";} 
+	if (ws !== null && ws.readyState === WebSocket.OPEN){ wifi.innerHTML = "Wifi<br>Connection Success!!";} 
 	else { wifi.innerHTML = "Wifi<br>No Connection";}
 }
 
@@ -222,11 +236,27 @@ function Wifi_Config(){
 
 
 //ナンバー処理
+//URLの ?id= の番号を表示する
+function Update_Number(){
+	if(MY_ID >= 1 && MY_ID <= 3){ number.textContent = "Number:" + MY_ID; }
+	else{ number.textContent = "Number:None (URLに ?id=1~3 を付けて)"; }
+}
 
 
 
 
 //bluetooth処理
+//Picoの状態({id, connected, voltage})を画面に反映する
+function Update_Pico(state){
+	if(state.connected === true){ bluetooth.innerHTML = "Bluetooth<br>Connected"; }
+	else{ bluetooth.innerHTML = "Bluetooth<br>No Connection"; }
+
+	if(state.connected === true && typeof state.voltage === 'number'){
+		battery.innerHTML = "battery<br>" + state.voltage.toFixed(2) + " V";
+	}else{
+		battery.innerHTML = "battery<br>None";
+	}
+}
 
 
 
@@ -234,36 +264,52 @@ function Wifi_Config(){
 
 
 //bluetooth送る
-/*
-
+//speed:0~10, radian:-90~90, giar:0~6 に丸めて送る(Python側の範囲に合わせる)
+function Clamp_Int(value, lo, hi){
+	var v = Math.round(Number(value));
+	if(!Number.isFinite(v)){ v = 0; }		//NaNを送るとPythonが落ちるため
+	return Math.max(lo, Math.min(hi, v));
+}
 
 function Ble_Sent(){
+	if(ws === null || ws.readyState !== WebSocket.OPEN){ return; }
+
+	ws.send(JSON.stringify({
+		speed : Clamp_Int(moter_speed / 10, 0, 10),		//0~100%を0~10に変換
+		radian: Clamp_Int(moter_degree, -90, 90),
+		giar  : Clamp_Int(moter_giar, 0, 6)
+	}));
+}
+
+//値が変わらなくても一定間隔で送り続ける(止まるとPython側が停止指令にする)
+setInterval(Ble_Sent, SEND_INTERVAL_MS);
 
 
-
-
-
-
-
-
-
+//bluetooth受け取る
+function Ble_Catch(event){
+	try{
+		Update_Pico( JSON.parse(event.data) );
+	}catch(e){
+		console.log("受信エラー:", e);
+	}
 }
 
 
-function Ble_Catch{
+//WebSocket接続(切れたら2秒後に自動で再接続)
+function Connect_WS(){
+	ws = new WebSocket(WS_URL);
 
-
-
-
-
-
-
-
-
-
-
-
+	ws.onopen = () => { Wifi_Config(); };
+	ws.onmessage = Ble_Catch;
+	ws.onclose = () => {
+		Wifi_Config();
+		Update_Pico({ connected:false, voltage:null });
+		setTimeout(Connect_WS, 2000);
+	};
 }
 
 
-*/
+//起動
+Update_Number();
+Update_Pico({ connected:false, voltage:null });
+if(MY_ID >= 1 && MY_ID <= 3){ Connect_WS(); }
